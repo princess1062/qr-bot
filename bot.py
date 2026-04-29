@@ -1,9 +1,13 @@
-def scan(path):
-    img = cv2.imread(path)
+async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    print("GAMBAR MASUK BOT")
 
-    detector = cv2.QRCodeDetector()
-    data, _, _ = detector.detectAndDecode(img)
+    await update.message.reply_text("Gambar sampai bot ✅")
 
-    print("DEBUG QR:", data)
+def main():
+    app = Application.builder().token(BOT_TOKEN).build()
 
-    return [data] if data else []
+# handler sini
+
+app.add_handler(Messagehandler(filters.PHOTO, handle))
+
+app.run_polling()
