@@ -1,13 +1,21 @@
-async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("GAMBAR MASUK BOT")
+import cv2
 
-    await update.message.reply_text("Gambar sampai bot ✅")
+from telegram import Update
+
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
+
+BOT_TOKEN = "TOKEN_KAU"
+
+async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    await update.message.reply_text("test")
 
 def main():
+
     app = Application.builder().token(BOT_TOKEN).build()
 
-# handler sini
+    app.add_handler(MessageHandler(filters.PHOTO, handle))
 
-app.add_handler(Messagehandler(filters.PHOTO, handle))
+    app.run_polling()
 
-app.run_polling()
+main()
