@@ -12,10 +12,11 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
 
-    app = Application.builder().token(BOT_TOKEN).build()
+  app = Application.builder().token(BOT_TOKEN).build()
 
-    app.add_handler(MessageHandler(filters.ALL, handle))
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle))
 
     app.run_polling()
+   
 
 main()
