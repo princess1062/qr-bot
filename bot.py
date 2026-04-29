@@ -1,9 +1,10 @@
+import os
 import cv2
 from pyzbar.pyzbar import decode
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
-BOT_TOKEN = "8740908330:AAGh5BymbLksOzk999U_tsja6lVp3KsGQ1g"
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 ALLOWED = ["tng", "tngdigital", "touchngo"]
 
