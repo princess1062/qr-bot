@@ -14,7 +14,7 @@ def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    app.add_handler(MessageHandler(filters.PHOTO, handle))
+    app.add_handler(MessageHandler(filters.ALL, handle))
 
     app.run_polling()
 
