@@ -4,22 +4,21 @@ import time
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
-print("🚀 SILENT ADMIN MODE STARTED")
+print("🚀 REAL TIME QR ALERT STARTED")
 
 BOT_TOKEN = "8740908330:AAEdPDwfzmA-rfzy1_20s4x46QA6MoFGCo8"
 
 detector = cv2.QRCodeDetector()
 
-# 🔥 
 ADMIN_ID = 340757376
 
 cooldown = {}
 
 
-def is_spam(user_id):
+def anti_spam(user_id):
     now = time.time()
     if user_id in cooldown:
-        if now - cooldown[user_id] < 2:
+        if now - cooldown[user_id] < 1.5:
             return True
     cooldown[user_id] = now
     return False
@@ -30,16 +29,33 @@ def is_valid_qr(data: str) -> bool:
         return False
 
     d = data.lower()
-
     return any(x in d for x in [
         "http",
         "tng",
         "tngd",
         "touchngo",
-        "tngdigital",
         "wallet",
         "wa.me"
     ])
+
+
+async def send_alert(context, message, data):
+
+    # 🚀 REAL TIME ALERT FORMAT
+    text = f"""🚨 REAL TIME QR ALERT
+
+👥 Group: {message.chat.title}
+👤 User: {message.from_user.first_name}
+🆔 User ID: {message.from_user.id}
+
+🔗 DATA:
+{data}
+"""
+
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=text
+    )
 
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -49,12 +65,10 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not message:
             return
 
-        # 👥 only group scan
         if message.chat.type not in ["group", "supergroup"]:
             return
 
-        # 🚫 anti spam
-        if is_spam(message.from_user.id):
+        if anti_spam(message.from_user.id):
             return
 
         file_id = None
@@ -66,7 +80,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             file_id = message.document.file_id
 
         else:
-            return  # 🔇 silent ignore
+            return
 
         file = await context.bot.get_file(file_id)
         file_bytes = await file.download_as_bytearray()
@@ -79,25 +93,13 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not data:
             return
 
-        print("QR DETECTED:", data)
+        print("QR:", data)
 
-        # 🚫 filter junk QR
         if not is_valid_qr(data):
             return
 
-        # 🔥 SEND ONLY TO ADMIN (NO GROUP REPLY)
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=f"""📌 SILENT QR DETECTED
-
-👥 Group: {message.chat.title}
-👤 User: {message.from_user.first_name}
-🆔 User ID: {message.from_user.id}
-
-🔗 Data:
-{data}
-"""
-        )
+        # ⚡ REAL TIME ALERT SEND (NO DELAY)
+        await send_alert(context, message, data)
 
     except Exception as e:
         print("ERROR:", e)
@@ -111,7 +113,7 @@ def main():
         MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle)
     )
 
-    print("🚀 RUNNING SILENT ADMIN MODE")
+    print("🚀 REAL TIME MODE RUNNING")
     app.run_polling(drop_pending_updates=True)
 
 
