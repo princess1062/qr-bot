@@ -1,46 +1,49 @@
 import cv2
 import numpy as np
+import os
+import logging
 import time
 
 from telegram import Update
-from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
+from telegram.ext import Application, MessageHandler, ContextTypes, filters
 
-print("🚀 SEMI-AUTO QR SYSTEM STARTED")
+print("🚀 ENTERPRISE WEBHOOK QR SYSTEM STARTED")
+
+logging.basicConfig(level=logging.INFO)
 
 BOT_TOKEN = "8740908330:AAGVH5VYVSUojAmIA08_JmUtAAH9BFQXoPU"
 ADMIN_ID = 340757376
 
+PORT = int(os.environ.get("PORT", 8080))
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
+
 detector = cv2.QRCodeDetector()
 
 # ================= MEMORY =================
-registered_channels = set()
-last_qr = {}
+qr_history = {}
+seen_count = {}
 
-# ================= REGISTER CHANNEL =================
-async def add_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    chat = update.effective_chat
-
-    registered_channels.add(chat.id)
-
-    await update.message.reply_text(
-        f"✅ Channel registered\nID: {chat.id}"
-    )
-
-# ================= ANTI DUPLICATE =================
+# ================= ANTI SPAM =================
 def is_duplicate(data):
     now = time.time()
-    if data in last_qr and now - last_qr[data] < 3:
+    if data in qr_history and now - qr_history[data] < 3:
         return True
-    last_qr[data] = now
+    qr_history[data] = now
     return False
 
 # ================= QR VALIDATION =================
 def is_valid_qr(data):
     if not data:
         return False
+
     d = data.lower()
-    return any(x in d for x in ["http", "tng", "wallet", "wa.me"])
+    return any(x in d for x in [
+        "http",
+        "tng",
+        "wallet",
+        "wa.me",
+        "tngd"
+    ])
 
 # ================= CORE HANDLER =================
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -52,10 +55,6 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         chat = message.chat
-
-        # ================= SEMI-AUTO FILTER =================
-        if chat.type == "channel" and chat.id not in registered_channels:
-            return
 
         file_id = None
 
@@ -86,6 +85,9 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_duplicate(data):
             return
 
+        # ================= TRACKING =================
+        seen_count[data] = seen_count.get(data, 0) + 1
+
         source = "Private"
 
         if chat.type in ["group", "supergroup"]:
@@ -94,11 +96,14 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif chat.type == "channel":
             source = f"Channel: {chat.title}"
 
-        text = f"""🚨 SEMI-AUTO QR ALERT
+        # ================= ALERT =================
+        text = f"""🚨 ENTERPRISE QR ALERT
 
 📍 Source: {source}
 🔗 QR:
 {data}
+
+📊 Seen: {seen_count[data]} times
 """
 
         await context.bot.send_message(
@@ -109,20 +114,21 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print("❌ ERROR:", e)
 
-# ================= MAIN =================
+# ================= WEBHOOK START =================
 def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # commands
-    app.add_handler(CommandHandler("addchannel", add_channel))
-
-    # global handler
     app.add_handler(MessageHandler(filters.ALL, handle))
 
-    print("🚀 SEMI-AUTO SYSTEM RUNNING")
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url=WEBHOOK_URL,
+        drop_pending_updates=True
+    )
 
-    app.run_polling(drop_pending_updates=True)
+    print("🚀 ENTERPRISE WEBHOOK RUNNING")
 
 if __name__ == "__main__":
     main()
