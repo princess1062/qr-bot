@@ -1,3 +1,4 @@
+print("🔥 FILE LOADED")
 import cv2
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
@@ -47,7 +48,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [[InlineKeyboardButton("🔗 Open Link", url=data)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            await message.reply_text(
+            await message.reply_text(ct
                 f"✅ QR DETECTED:\n{data}",
                 reply_markup=reply_markup
             )
@@ -59,3 +60,6 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print("ERROR:", e)
         if update.message:
             await update.message.reply_text("❌ Error berlaku semasa proses QR")
+if __name__ == "__main__":
+    print("🚀 STARTING BOT")
+    main()
