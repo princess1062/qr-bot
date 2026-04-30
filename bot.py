@@ -92,10 +92,18 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 {data}
 """
 
-        await context.bot.send_message(
-            chat_id=ADMIN_ID,
-            text=text
-        )
+        keyboard = [
+    [InlineKeyboardButton("🔗 Open TNG Link", url=data)]
+]
+
+reply_markup = InlineKeyboardMarkup(keyboard)
+
+await context.bot.send_message(
+    chat_id=ADMIN_ID,
+    text=text,
+    reply_markup=reply_markup,
+    disable_web_page_preview=False
+)
 
     except Exception as e:
         print("ERROR:", e)
