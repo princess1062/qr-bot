@@ -45,10 +45,16 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         data, bbox, _ = detector.detectAndDecode(img)
 
-        if data:
-            await message.reply_text(f"✅ QR RESULT:\n{data}")
-        else:
-            await message.reply_text("❌ QR tak dapat detect")
+        if data and data.startswith("http"):
+    keyboard = [[InlineKeyboardButton("🔗 Open Link", url=data)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await message.reply_text(
+        f"✅ QR DETECTED:\n{data}",
+        reply_markup=reply_markup
+    )
+else:
+    await message.reply_text(f"✅ QR DETECTED:\n{data}")
 
     except Exception as e:
         print("ERROR:", e)
