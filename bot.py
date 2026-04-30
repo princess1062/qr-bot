@@ -1,7 +1,8 @@
-print("🔥 FILE LOADED")
 import cv2
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
+
+print("🔥 FILE LOADED")
 
 BOT_TOKEN = "8740908330:AAEdPDwfzmA-rfzy1_20s4x46QA6MoFGCo8"
 
@@ -16,7 +17,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not message:
             return
 
-        print("MASUK FUNCTION")
+        print("📥 MESSAGE RECEIVED")
 
         await message.reply_text("📥 Processing image...")
 
@@ -25,7 +26,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if message.photo:
             file_id = message.photo[-1].file_id
 
-        elif message.document and message.document.mime_type.startswith("image"):
+        elif message.document and message.document.mime_type and message.document.mime_type.startswith("image"):
             file_id = message.document.file_id
 
         else:
@@ -37,18 +38,26 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         path = "qr.jpg"
         await file.download_to_drive(path)
 
-        print("DOWNLOAD OK")
+        print("📸 DOWNLOAD OK")
 
         img = cv2.imread(path)
-
         data, bbox, _ = detector.detectAndDecode(img)
 
-        if data and (data.startswith("http://") or data.startswith("https://")):
+        print("QR DATA:", data)
 
-            keyboard = [[InlineKeyboardButton("🔗 Open Link", url=data)]]
+        if not data:
+            await message.reply_text("❌ QR tak dapat detect")
+            return
+
+        # kalau link → button
+        if data.startswith("http://") or data.startswith("https://"):
+
+            keyboard = [
+                [InlineKeyboardButton("🔗 Open Link", url=data)]
+            ]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            await message.reply_text(ct)
+            await message.reply_text(
                 f"✅ QR DETECTED:\n{data}",
                 reply_markup=reply_markup
             )
@@ -57,9 +66,23 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await message.reply_text(f"✅ QR DETECTED:\n{data}")
 
     except Exception as e:
-        print("ERROR:", e)
+        print("❌ ERROR:", e)
         if update.message:
-            await update.message.reply_text("❌ Error berlaku semasa proses QR")
-if __name__ == "__main__":
+            await update.message.reply_text("❌ Error berlaku semasa scan QR")
+
+
+def main():
+
     print("🚀 STARTING BOT")
+
+    app = Application.builder().token(BOT_TOKEN).build()
+
+    app.add_handler(
+        MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle)
+    )
+
+    app.run_polling(drop_pending_updates=True)
+
+
+if __name__ == "__main__":
     main()
