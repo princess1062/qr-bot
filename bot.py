@@ -19,7 +19,6 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await message.reply_text("📥 Processing image...")
 
-        # ambil file id
         file_id = None
 
         if message.photo:
@@ -32,7 +31,6 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await message.reply_text("❌ Hantar gambar QR saja")
             return
 
-        # download image
         file = await context.bot.get_file(file_id)
 
         path = "qr.jpg"
@@ -40,39 +38,24 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         print("DOWNLOAD OK")
 
-        # decode QR
         img = cv2.imread(path)
 
         data, bbox, _ = detector.detectAndDecode(img)
 
         if data and (data.startswith("http://") or data.startswith("https://")):
-    keyboard = [[InlineKeyboardButton("🔗 Open Link", url=data)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await message.reply_text(
-        f"✅ QR DETECTED:\n{data}",
-        reply_markup=reply_markup
-    )
-else:
-    await message.reply_text(f"✅ QR DETECTED:\n{data}")
+            keyboard = [[InlineKeyboardButton("🔗 Open Link", url=data)]]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+
+            await message.reply_text(
+                f"✅ QR DETECTED:\n{data}",
+                reply_markup=reply_markup
+            )
+
+        else:
+            await message.reply_text(f"✅ QR DETECTED:\n{data}")
 
     except Exception as e:
         print("ERROR:", e)
-        await update.message.reply_text("❌ Error berlaku semasa proses QR")
-
-
-def main():
-    print("BOT STARTED")
-
-    app = Application.builder().token(BOT_TOKEN).build()
-
-    # hanya image sahaja trigger (lebih stable)
-    app.add_handler(
-        MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle)
-    )
-
-    app.run_polling(drop_pending_updates=True)
-
-
-if __name__ == "__main__":
-    main()
+        if update.message:
+            await update.message.reply_text("❌ Error berlaku semasa proses QR")
