@@ -34,6 +34,8 @@ def is_valid_qr(data):
     ])
 
 # ================= SAFE HANDLER =================
+print("🔥 UPDATE RECEIVED")
+print(update)
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
