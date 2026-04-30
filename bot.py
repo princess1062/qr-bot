@@ -3,42 +3,32 @@ import numpy as np
 import time
 
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, MessageHandler, ChannelPostHandler, filters, ContextTypes
 
-print("🔥 SILENT PRO MAX STARTED")
+print("🚀 PRODUCTION QR BOT STARTED")
 
 BOT_TOKEN = "8740908330:AAGVH5VYVSUojAmIA08_JmUtAAH9BFQXoPU"
 ADMIN_ID = 340757376
 
 detector = cv2.QRCodeDetector()
 
-# ================= ANTI DUPLICATE =================
-last_seen = {}
+# ================= SAFETY =================
+last_qr = {}
 
 def is_duplicate(data):
     now = time.time()
-    if data in last_seen:
-        if now - last_seen[data] < 3:
-            return True
-    last_seen[data] = now
+    if data in last_qr and now - last_qr[data] < 3:
+        return True
+    last_qr[data] = now
     return False
 
-# ================= QR FILTER =================
-def is_valid_qr(data: str) -> bool:
+def is_valid_qr(data):
     if not data:
         return False
-
     d = data.lower()
-    return any(x in d for x in [
-        "http",
-        "tng",
-        "tngd",
-        "touchngo",
-        "wallet",
-        "wa.me"
-    ])
+    return any(x in d for x in ["http", "tng", "wallet", "wa.me"])
 
-# ================= CORE =================
+# ================= SAFE HANDLER =================
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
@@ -47,17 +37,18 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not message:
             return
 
+        chat = message.chat
+
         file_id = None
 
-        # image from photo
         if message.photo:
             file_id = message.photo[-1].file_id
 
-        # image from document
-        elif message.document and message.document.mime_type and message.document.mime_type.startswith("image"):
-            file_id = message.document.file_id
+        elif message.document and message.document.mime_type:
+            if message.document.mime_type.startswith("image"):
+                file_id = message.document.file_id
 
-        else:
+        if not file_id:
             return
 
         file = await context.bot.get_file(file_id)
@@ -71,16 +62,12 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not data:
             return
 
-        # filter QR
         if not is_valid_qr(data):
             return
 
-        # anti duplicate
         if is_duplicate(data):
             return
 
-        # source detect
-        chat = message.chat
         source = "Private"
 
         if chat.type in ["group", "supergroup"]:
@@ -89,12 +76,10 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif chat.type == "channel":
             source = f"Channel: {chat.title}"
 
-        # silent alert
-        text = f"""🔥 SILENT PRO MAX ALERT
+        text = f"""🚨 QR ALERT
 
-📍 Source: {source}
-🔗 QR:
-{data}
+📍 {source}
+🔗 {data}
 """
 
         await context.bot.send_message(
@@ -103,18 +88,18 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     except Exception as e:
-        print("ERROR:", e)
+        print("❌ ERROR:", e)
 
 # ================= MAIN =================
 def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # omni listener
-    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle))
-    app.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, handle))
+    # 🔥 IMPORTANT: FULL COVERAGE
+    app.add_handler(MessageHandler(filters.ALL, handle))
+    app.add_handler(ChannelPostHandler(handle))
 
-    print("🔥 SILENT PRO MAX RUNNING")
+    print("🚀 BOT RUNNING STABLE MODE")
 
     app.run_polling(drop_pending_updates=True)
 
