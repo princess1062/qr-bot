@@ -45,7 +45,8 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         data, bbox, _ = detector.detectAndDecode(img)
 
-        if data and data.startswith("http"):
+        if data.startswith("http://") or data.startswith("https://"):
+
     keyboard = [[InlineKeyboardButton("🔗 Open Link", url=data)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
