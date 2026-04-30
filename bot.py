@@ -3,7 +3,7 @@ import numpy as np
 import time
 
 from telegram import Update
-from telegram.ext import Application, MessageHandler, ChannelPostHandler, filters, ContextTypes
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
 print("🚀 PRODUCTION QR BOT STARTED")
 
@@ -26,7 +26,12 @@ def is_valid_qr(data):
     if not data:
         return False
     d = data.lower()
-    return any(x in d for x in ["http", "tng", "wallet", "wa.me"])
+    return any(x in d for x in [
+        "http",
+        "tng",
+        "wallet",
+        "wa.me"
+    ])
 
 # ================= SAFE HANDLER =================
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -68,6 +73,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_duplicate(data):
             return
 
+        # source detect
         source = "Private"
 
         if chat.type in ["group", "supergroup"]:
@@ -95,9 +101,8 @@ def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # 🔥 IMPORTANT: FULL COVERAGE
+    # ✅ FIX: no ChannelPostHandler (NOT SUPPORTED)
     app.add_handler(MessageHandler(filters.ALL, handle))
-    app.add_handler(ChannelPostHandler(handle))
 
     print("🚀 BOT RUNNING STABLE MODE")
 
