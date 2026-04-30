@@ -3,34 +3,27 @@ import numpy as np
 import time
 
 from telegram import Update
-from telegram.ext import (
-    Application,
-    MessageHandler,
-    ChannelPostHandler,
-    filters,
-    ContextTypes
-)
+from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
-print("🚀 OMNI QR SCANNER STARTED")
+print("🔥 SILENT PRO MAX STARTED")
 
-# ================= CONFIG =================
 BOT_TOKEN = "8740908330:AAGVH5VYVSUojAmIA08_JmUtAAH9BFQXoPU"
 ADMIN_ID = 340757376
 
-# ================= ENGINE =================
 detector = cv2.QRCodeDetector()
-cooldown = {}
 
-# ================= ANTI SPAM =================
-def anti_spam(user_id):
+# ================= ANTI DUPLICATE =================
+last_seen = {}
+
+def is_duplicate(data):
     now = time.time()
-    if user_id in cooldown:
-        if now - cooldown[user_id] < 1.5:
+    if data in last_seen:
+        if now - last_seen[data] < 3:
             return True
-    cooldown[user_id] = now
+    last_seen[data] = now
     return False
 
-# ================= QR VALIDATION =================
+# ================= QR FILTER =================
 def is_valid_qr(data: str) -> bool:
     if not data:
         return False
@@ -45,7 +38,7 @@ def is_valid_qr(data: str) -> bool:
         "wa.me"
     ])
 
-# ================= CORE HANDLER =================
+# ================= CORE =================
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
@@ -54,45 +47,41 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not message:
             return
 
-        chat = message.chat
-
-        # ignore spam
-        if message.from_user and anti_spam(message.from_user.id):
-            return
-
         file_id = None
 
-        # PHOTO
+        # image from photo
         if message.photo:
             file_id = message.photo[-1].file_id
 
-        # IMAGE DOCUMENT
+        # image from document
         elif message.document and message.document.mime_type and message.document.mime_type.startswith("image"):
             file_id = message.document.file_id
 
         else:
             return
 
-        # DOWNLOAD IMAGE (memory only)
         file = await context.bot.get_file(file_id)
         file_bytes = await file.download_as_bytearray()
 
         np_arr = np.frombuffer(file_bytes, np.uint8)
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        # DECODE QR
         data, _, _ = detector.detectAndDecode(img)
 
         if not data:
             return
 
-        print("QR FOUND:", data)
-
+        # filter QR
         if not is_valid_qr(data):
             return
 
-        # SOURCE TYPE
-        source = "UNKNOWN"
+        # anti duplicate
+        if is_duplicate(data):
+            return
+
+        # source detect
+        chat = message.chat
+        source = "Private"
 
         if chat.type in ["group", "supergroup"]:
             source = f"Group: {chat.title}"
@@ -100,19 +89,14 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif chat.type == "channel":
             source = f"Channel: {chat.title}"
 
-        else:
-            source = "Private Chat"
-
-        # ALERT TEXT
-        text = f"""🚨 OMNI QR ALERT
+        # silent alert
+        text = f"""🔥 SILENT PRO MAX ALERT
 
 📍 Source: {source}
-👤 User: {message.from_user.first_name if message.from_user else "Channel"}
-🔗 Data:
+🔗 QR:
 {data}
 """
 
-        # SEND TO ADMIN
         await context.bot.send_message(
             chat_id=ADMIN_ID,
             text=text
@@ -126,13 +110,11 @@ def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # GROUP + DM + PHOTO
+    # omni listener
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle))
+    app.add_handler(MessageHandler(filters.UpdateType.CHANNEL_POST, handle))
 
-    # CHANNEL POSTS
-    app.add_handler(ChannelPostHandler(handle))
-
-    print("🚀 OMNI MODE RUNNING")
+    print("🔥 SILENT PRO MAX RUNNING")
 
     app.run_polling(drop_pending_updates=True)
 
