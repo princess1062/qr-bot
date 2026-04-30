@@ -1,20 +1,24 @@
 import cv2
 import numpy as np
 import time
+
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 
-print("🚀 REAL TIME QR ALERT STARTED")
+print("🚀 BOT STARTED")
 
+# ===================== CONFIG =====================
 BOT_TOKEN = "8740908330:AAGVH5VYVSUojAmIA08_JmUtAAH9BFQXoPU"
+ADMIN_ID = 340757376  # 
 
+# ===================== SYSTEM =====================
 detector = cv2.QRCodeDetector()
-
-ADMIN_ID = 340757376
-
 cooldown = {}
 
+GROUPS = {}
+SCAN_COUNT = {}
 
+# ===================== ANTI SPAM =====================
 def anti_spam(user_id):
     now = time.time()
     if user_id in cooldown:
@@ -23,7 +27,7 @@ def anti_spam(user_id):
     cooldown[user_id] = now
     return False
 
-
+# ===================== VALID QR FILTER =====================
 def is_valid_qr(data: str) -> bool:
     if not data:
         return False
@@ -38,26 +42,7 @@ def is_valid_qr(data: str) -> bool:
         "wa.me"
     ])
 
-
-async def send_alert(context, message, data):
-
-    # 🚀 REAL TIME ALERT FORMAT
-    text = f"""🚨 REAL TIME QR ALERT
-
-👥 Group: {message.chat.title}
-👤 User: {message.from_user.first_name}
-🆔 User ID: {message.from_user.id}
-
-🔗 DATA:
-{data}
-"""
-
-    await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=text
-    )
-
-
+# ===================== HANDLE QR =====================
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
@@ -65,11 +50,11 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not message:
             return
 
-        if message.chat.type not in ["group", "supergroup"]:
-            return
+        chat = message.chat
 
-        if anti_spam(message.from_user.id):
-            return
+        # register group
+        GROUPS[chat.id] = chat.title
+        SCAN_COUNT[chat.id] = SCAN_COUNT.get(chat.id, 0) + 1
 
         file_id = None
 
@@ -93,27 +78,55 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not data:
             return
 
-        print("QR:", data)
+        print("QR DETECTED:", data)
 
         if not is_valid_qr(data):
             return
 
-        # ⚡ REAL TIME ALERT SEND (NO DELAY)
-        await send_alert(context, message, data)
+        # ALERT ADMIN
+        text = f"""🚨 QR DETECTED
+
+👥 Group: {chat.title}
+👤 User: {message.from_user.first_name}
+🔗 Data:
+{data}
+"""
+
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text
+        )
 
     except Exception as e:
         print("ERROR:", e)
 
+# ===================== DASHBOARD =====================
+async def dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    text = "📊 GROUP DASHBOARD\n\n"
+
+    for gid, title in GROUPS.items():
+        count = SCAN_COUNT.get(gid, 0)
+        text += f"{title} | Scans: {count}\n"
+
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=text
+    )
+
+# ===================== MAIN =====================
 def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    app.add_handler(
-        MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle)
-    )
+    # QR handler
+    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle))
 
-    print("🚀 REAL TIME MODE RUNNING")
+    # dashboard command
+    app.add_handler(CommandHandler("dashboard", dashboard))
+
+    print("🚀 RUNNING...")
+
     app.run_polling(drop_pending_updates=True)
 
 
