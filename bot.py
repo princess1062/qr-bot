@@ -3,22 +3,25 @@ import numpy as np
 import time
 
 from telegram import Update
-from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+from telegram.ext import (
+    Application,
+    MessageHandler,
+    ChannelPostHandler,
+    filters,
+    ContextTypes
+)
 
-print("🚀 BOT STARTED")
+print("🚀 OMNI QR SCANNER STARTED")
 
-# ===================== CONFIG =====================
+# ================= CONFIG =================
 BOT_TOKEN = "8740908330:AAGVH5VYVSUojAmIA08_JmUtAAH9BFQXoPU"
-ADMIN_ID = 340757376  # 
+ADMIN_ID = 340757376
 
-# ===================== SYSTEM =====================
+# ================= ENGINE =================
 detector = cv2.QRCodeDetector()
 cooldown = {}
 
-GROUPS = {}
-SCAN_COUNT = {}
-
-# ===================== ANTI SPAM =====================
+# ================= ANTI SPAM =================
 def anti_spam(user_id):
     now = time.time()
     if user_id in cooldown:
@@ -27,7 +30,7 @@ def anti_spam(user_id):
     cooldown[user_id] = now
     return False
 
-# ===================== VALID QR FILTER =====================
+# ================= QR VALIDATION =================
 def is_valid_qr(data: str) -> bool:
     if not data:
         return False
@@ -42,101 +45,96 @@ def is_valid_qr(data: str) -> bool:
         "wa.me"
     ])
 
-# ===================== HANDLE QR =====================
+# ================= CORE HANDLER =================
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
-        message = update.message
+        message = update.message or update.channel_post
+
         if not message:
             return
 
         chat = message.chat
 
-        # register group
-        GROUPS[chat.id] = chat.title
-        SCAN_COUNT[chat.id] = SCAN_COUNT.get(chat.id, 0) + 1
+        # ignore spam
+        if message.from_user and anti_spam(message.from_user.id):
+            return
 
         file_id = None
 
+        # PHOTO
         if message.photo:
             file_id = message.photo[-1].file_id
 
+        # IMAGE DOCUMENT
         elif message.document and message.document.mime_type and message.document.mime_type.startswith("image"):
             file_id = message.document.file_id
 
         else:
             return
 
+        # DOWNLOAD IMAGE (memory only)
         file = await context.bot.get_file(file_id)
         file_bytes = await file.download_as_bytearray()
 
         np_arr = np.frombuffer(file_bytes, np.uint8)
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
+        # DECODE QR
         data, _, _ = detector.detectAndDecode(img)
 
         if not data:
             return
 
-        print("QR DETECTED:", data)
+        print("QR FOUND:", data)
 
         if not is_valid_qr(data):
             return
 
-        # ALERT ADMIN
-        text = f"""🚨 QR DETECTED
+        # SOURCE TYPE
+        source = "UNKNOWN"
 
-👥 Group: {chat.title}
-👤 User: {message.from_user.first_name}
+        if chat.type in ["group", "supergroup"]:
+            source = f"Group: {chat.title}"
+
+        elif chat.type == "channel":
+            source = f"Channel: {chat.title}"
+
+        else:
+            source = "Private Chat"
+
+        # ALERT TEXT
+        text = f"""🚨 OMNI QR ALERT
+
+📍 Source: {source}
+👤 User: {message.from_user.first_name if message.from_user else "Channel"}
 🔗 Data:
 {data}
 """
 
-        keyboard = [
-    [InlineKeyboardButton("🔗 Open TNG Link", url=data)]
-]
-
-reply_markup = InlineKeyboardMarkup(keyboard)
-
-await context.bot.send_message(
-    chat_id=ADMIN_ID,
-    text=text,
-    reply_markup=reply_markup,
-    disable_web_page_preview=False
-)
+        # SEND TO ADMIN
+        await context.bot.send_message(
+            chat_id=ADMIN_ID,
+            text=text
+        )
 
     except Exception as e:
         print("ERROR:", e)
 
-# ===================== DASHBOARD =====================
-async def dashboard(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-    text = "📊 GROUP DASHBOARD\n\n"
-
-    for gid, title in GROUPS.items():
-        count = SCAN_COUNT.get(gid, 0)
-        text += f"{title} | Scans: {count}\n"
-
-    await context.bot.send_message(
-        chat_id=ADMIN_ID,
-        text=text
-    )
-
-# ===================== MAIN =====================
+# ================= MAIN =================
 def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # QR handler
+    # GROUP + DM + PHOTO
     app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle))
 
-    # dashboard command
-    app.add_handler(CommandHandler("dashboard", dashboard))
+    # CHANNEL POSTS
+    app.add_handler(ChannelPostHandler(handle))
 
-    print("🚀 RUNNING...")
+    print("🚀 OMNI MODE RUNNING")
 
     app.run_polling(drop_pending_updates=True)
-
 
 if __name__ == "__main__":
     main()
