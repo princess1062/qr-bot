@@ -3,18 +3,31 @@ import numpy as np
 import time
 
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, MessageHandler, CommandHandler, ContextTypes, filters
 
-print("🚀 PRODUCTION QR BOT STARTED")
+print("🚀 SEMI-AUTO QR SYSTEM STARTED")
 
 BOT_TOKEN = "8740908330:AAGVH5VYVSUojAmIA08_JmUtAAH9BFQXoPU"
 ADMIN_ID = 340757376
 
 detector = cv2.QRCodeDetector()
 
-# ================= SAFETY =================
+# ================= MEMORY =================
+registered_channels = set()
 last_qr = {}
 
+# ================= REGISTER CHANNEL =================
+async def add_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    chat = update.effective_chat
+
+    registered_channels.add(chat.id)
+
+    await update.message.reply_text(
+        f"✅ Channel registered\nID: {chat.id}"
+    )
+
+# ================= ANTI DUPLICATE =================
 def is_duplicate(data):
     now = time.time()
     if data in last_qr and now - last_qr[data] < 3:
@@ -22,20 +35,14 @@ def is_duplicate(data):
     last_qr[data] = now
     return False
 
+# ================= QR VALIDATION =================
 def is_valid_qr(data):
     if not data:
         return False
     d = data.lower()
-    return any(x in d for x in [
-        "http",
-        "tng",
-        "wallet",
-        "wa.me"
-    ])
+    return any(x in d for x in ["http", "tng", "wallet", "wa.me"])
 
-# ================= SAFE HANDLER =================
-print("🔥 UPDATE RECEIVED")
-
+# ================= CORE HANDLER =================
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
@@ -45,6 +52,10 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         chat = message.chat
+
+        # ================= SEMI-AUTO FILTER =================
+        if chat.type == "channel" and chat.id not in registered_channels:
+            return
 
         file_id = None
 
@@ -75,7 +86,6 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if is_duplicate(data):
             return
 
-        # source detect
         source = "Private"
 
         if chat.type in ["group", "supergroup"]:
@@ -84,10 +94,11 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         elif chat.type == "channel":
             source = f"Channel: {chat.title}"
 
-        text = f"""🚨 QR ALERT
+        text = f"""🚨 SEMI-AUTO QR ALERT
 
-📍 {source}
-🔗 {data}
+📍 Source: {source}
+🔗 QR:
+{data}
 """
 
         await context.bot.send_message(
@@ -103,10 +114,13 @@ def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # ✅ FIX: no ChannelPostHandler (NOT SUPPORTED)
+    # commands
+    app.add_handler(CommandHandler("addchannel", add_channel))
+
+    # global handler
     app.add_handler(MessageHandler(filters.ALL, handle))
 
-    print("🚀 BOT RUNNING STABLE MODE")
+    print("🚀 SEMI-AUTO SYSTEM RUNNING")
 
     app.run_polling(drop_pending_updates=True)
 
