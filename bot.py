@@ -1,65 +1,72 @@
 import cv2
-
 from telegram import Update
-
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
-BOT_TOKEN = "8740908330:AAGh5BymbLksOzk999U_tsja6lVp3KsGQ1g"
+BOT_TOKEN = "8740908330:AAEdPDwfzmA-rfzy1_20s4x46QA6MoFGCo8"
+
+# QR DETECTOR
+detector = cv2.QRCodeDetector()
+
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
+        message = update.message
+        if not message:
+            return
 
         print("MASUK FUNCTION")
 
-        if update.message:
+        await message.reply_text("📥 Processing image...")
 
-            await update.message.reply_text("MASUK FUNCTION ✅")
-
-        else:
-
-            print("NO MESSAGE")
-
-            return
-
+        # ambil file id
         file_id = None
 
-        if update.message.photo:
+        if message.photo:
+            file_id = message.photo[-1].file_id
 
-            file_id = update.message.photo[-1].file_id
-
-        elif update.message.document:
-
-            file_id = update.message.document.file_id
+        elif message.document and message.document.mime_type.startswith("image"):
+            file_id = message.document.file_id
 
         else:
-
-            await update.message.reply_text("❌ Bukan gambar")
-
+            await message.reply_text("❌ Hantar gambar QR saja")
             return
 
+        # download image
         file = await context.bot.get_file(file_id)
 
         path = "qr.jpg"
-
         await file.download_to_drive(path)
 
-        await update.message.reply_text("📸 DOWNLOAD OK")
+        print("DOWNLOAD OK")
+
+        # decode QR
+        img = cv2.imread(path)
+
+        data, bbox, _ = detector.detectAndDecode(img)
+
+        if data:
+            await message.reply_text(f"✅ QR RESULT:\n{data}")
+        else:
+            await message.reply_text("❌ QR tak dapat detect")
 
     except Exception as e:
-
         print("ERROR:", e)
+        await update.message.reply_text("❌ Error berlaku semasa proses QR")
+
 
 def main():
-
-    print("BOT START")
+    print("BOT STARTED")
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    app.add_handler(MessageHandler(filters.ALL, handle))
+    # hanya image sahaja trigger (lebih stable)
+    app.add_handler(
+        MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle)
+    )
 
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
+
 
 if __name__ == "__main__":
-
     main()
