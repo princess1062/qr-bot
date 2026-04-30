@@ -9,15 +9,25 @@ from telegram.ext import Application, MessageHandler, filters, ContextTypes
 BOT_TOKEN = "8740908330:AAGh5BymbLksOzk999U_tsja6lVp3KsGQ1g"
 
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    photo = update.message.photo[-1]
+    file = await context.bot.get_file(photo.file_id)
 
-    await update.message.reply_text("GAMBAR MASUK ✅")
+    path = "qr.jpg"
+    await file.download_to_drive(path)
 
-def main():
+    # scan QR guna OpenCV
+    img = cv2.imread(path)
+    detector = cv2.QRCodeDetector()
+    data, _, _ = detector.detectAndDecode(img)
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    print("DEBUG QR:", data)
 
-    app.add_handler(MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle))
+    if not data:
+        await update.message.reply_text("❌ Tak jumpa QR")
+        return
 
-    app.run_polling()
-
-main()
+    # filter TNG
+    if any(x in data.lower() for x in ["tng", "touchngo"]):
+        await update.message.reply_text(f"🔔 MATCH TNG:\n{data}")
+    else:
+        await update.message.reply_text(f"⚠️ QR dikesan:\n{data}")
