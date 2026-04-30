@@ -48,7 +48,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
             keyboard = [[InlineKeyboardButton("🔗 Open Link", url=data)]]
             reply_markup = InlineKeyboardMarkup(keyboard)
 
-            await message.reply_text(ct
+            await message.reply_text(ct)
                 f"✅ QR DETECTED:\n{data}",
                 reply_markup=reply_markup
             )
