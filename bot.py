@@ -7,14 +7,14 @@ BOT_TOKEN = "8740908330:AAGh5BymbLksOzk999U_tsja6lVp3KsGQ1g"
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("MASUK FUNCTION ✅")
 
-def main():
-    print("BOT START")
+    if not update.message.photo:
+        await update.message.reply_text("❌ Bukan gambar")
+        return
 
-    app = Application.builder().token(BOT_TOKEN).build()
+    photo = update.message.photo[-1]
+    file = await context.bot.get_file(photo.file_id)
 
-    app.add_handler(MessageHandler(filters.ALL, handle))
+    path = "qr.jpg"
+    await file.download_to_drive(path)
 
-    app.run_polling()
-
-if __name__ == "__main__":
-    main()
+    await update.message.reply_text("📸 GAMBAR BERJAYA DOWNLOAD")
