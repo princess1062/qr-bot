@@ -1,3 +1,5 @@
+print("VERSION BARU 123")
+
 import cv2
 
 from telegram import Update
