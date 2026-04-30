@@ -48,3 +48,5 @@ async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print("ERROR:", e)
         await update.message.reply_text(f"❌ ERROR:\n{e}")
+
+MessageHandler(filters.ALL, handle)
